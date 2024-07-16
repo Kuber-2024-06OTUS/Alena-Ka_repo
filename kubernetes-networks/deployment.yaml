@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-deployment
+  namespace: homework
+  labels:
+    app: my-deployment
+spec:
+  selector:
+    matchLabels:
+      app: my-deployment
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: my-deployment
+    spec:
+      nodeSelector:
+        homework: "true"
+      containers:
+      - name: my-nginx
+        image: nginx:latest
+        readinessProbe:
+          httpGet:
+            host:
+            scheme: HTTP
+            path: /
+            httpHeaders:
+            - name: Host
+              value: index.html
+            port: 80
+          initialDelaySeconds: 2
+          periodSeconds: 2
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: workdir
+          mountPath: "/usr/share/nginx/html"
+        lifecycle:
+          preStop:
+            exec:
+              command: ["sh", "-c","sleep 1 && rm /homework/index.html"]
+      initContainers:
+      - name: my-init
+        image: busybox:1.28
+        command:
+        - wget
+        - "-O"
+        - "/init/index.html"
+        - http://info.cern.ch
+        volumeMounts:
+        - name: workdir
+          mountPath: "/init"
+      volumes:
+      - name: workdir
+        emptyDir: {}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
